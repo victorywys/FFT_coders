@@ -1,0 +1,3 @@
+
+def writeMid():
+    pass
