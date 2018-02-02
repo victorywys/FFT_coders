@@ -39,7 +39,6 @@ def readWav(filename, mode = "first"):
         print("\t%s" % str(e))
         return None
 
-    print("ok")
     #process wave file
     params = f.getparams()
     nchannels, sampwidth, framerate, nframes = params[:4]
