@@ -3,15 +3,15 @@ from scipy import signal
 import numpy as np
 import matplotlib.pyplot as plt
 
-note_name=["A0", "A#0", "B0",
-        "C1", "C#1", "D1", "D#1", "E1", "F1", "F#1", "G1", "G#1", "A1", "A#1", "B1",
-        "C2", "C#2", "D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2",
-        "C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3",
-        "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
-        "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5",
-        "C6", "C#6", "D6", "D#6", "E6", "F6", "F#6", "G6", "G#6", "A6", "A#6", "B6",
-        "C7", "C#7", "D7", "D#7", "E7", "F7", "F#7", "G7", "G#7", "A7", "A#7", "B7",
-        "C8"]
+note_name=["A_0", "As_0", "B_0",
+        "C_1", "Cs_1", "D_1", "Ds_1", "E_1", "F_1", "Fs_1", "G_1", "Gs_1", "A_1", "As_1", "B_1",
+        "C_2", "Cs_2", "D_2", "Ds_2", "E_2", "F_2", "Fs_2", "G_2", "Gs_2", "A_2", "As_2", "B_2",
+        "C_3", "Cs_3", "D_3", "Ds_3", "E_3", "F_3", "Fs_3", "G_3", "Gs_3", "A_3", "As_3", "B_3",
+        "C_4", "Cs_4", "D_4", "Ds_4", "E_4", "F_4", "Fs_4", "G_4", "Gs_4", "A_4", "As_4", "B_4",
+        "C_5", "Cs_5", "D_5", "Ds_5", "E_5", "F_5", "Fs_5", "G_5", "Gs_5", "A_5", "As_5", "B_5",
+        "C_6", "Cs_6", "D_6", "Ds_6", "E_6", "F_6", "Fs_6", "G_6", "Gs_6", "A_6", "As_6", "B_6",
+        "C_7", "Cs_7", "D_7", "Ds_7", "E_7", "F_7", "Fs_7", "G_7", "Gs_7", "A_7", "As_7", "B_7",
+        "C_8"]
 note_freq=[27.5 * (2 ** (i/12.0)) for i in range(88)]
 
 def freqToNote(freq):
@@ -44,6 +44,12 @@ def recognize(wav_data, fs = 1.0):
 
     toRtn = []
 
+    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
+    plt.title('STFT Magnitude')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time[sec]')
+    plt.show()
+
     Zxx_fil = np.transpose(Zxx_fil)
     last_note = None
     start_time = 0
@@ -58,20 +64,16 @@ def recognize(wav_data, fs = 1.0):
             start_time = time
     toRtn.append((last_note, start_time, t[1]*len(t)))
     print toRtn
+
     return toRtn
 
 #
-#    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
-#    plt.title('STFT Magnitude')
-#    plt.ylabel('Frequency [Hz]')
-#    plt.xlabel('Time[sec]')
-#    plt.show()
 
 if __name__ == "__main__":
 #    print(len(note_name))
 #    for i in range(len(note_name)):
 #        print("%s: %.4f" % (note_name[i], note_freq[i]))
-    _, _, fr, data = readWav("night")
+    _, _, fr, data = readWav("fft_coder")
 #    print("hello")
     recognize(data, fr)
 #    print(freqToNote(500))
