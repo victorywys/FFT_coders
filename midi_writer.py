@@ -26,7 +26,7 @@ def writeMid(note_time_list):
     # write the transformed list to noteOnEvents,add to the track
     for event in event_list:
         if event[2]==1:
-            on = midi.NoteOnEvent(tick=event[1],velocity=20,pitch=event[0])
+            on = midi.NoteOnEvent(tick=event[1],velocity=50,pitch=event[0])
             track.append(on)
         else:
             off = midi.NoteOffEvent(tick=event[1],pitch=event[0])
@@ -57,7 +57,7 @@ def note_name2note_num(note_name_list):
     for value in range(128):
         noteidx = value % NOTE_PER_OCTAVE
         octidx = value / NOTE_PER_OCTAVE
-        octidx -= 1
+        octidx -= 2
         name = NOTE_NAMES[noteidx]
         if len(name) == 2:
             # sharp note
@@ -88,8 +88,8 @@ def time2tick(time_list):
     RESOLUTION = 220
     tick_list = []
     for time_tuple in time_list:
-        start_tick = round(time_tuple[1]*RESOLUTION*4/(60/BPM))
-        end_tick = round(time_tuple[2]*RESOLUTION*4/(60/BPM))
+        start_tick = int(round(time_tuple[1]*RESOLUTION*4*2))
+        end_tick = int(round(time_tuple[2]*RESOLUTION*4*2))
         temp = (start_tick,end_tick)
         tick_list.append(temp)
 
@@ -125,6 +125,7 @@ def order_ticks(note_num_list,start_end_tick_list):
         event[1] = delta
 
     return event_list
+
 
 
 
