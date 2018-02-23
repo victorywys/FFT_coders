@@ -127,10 +127,3 @@ def order_ticks(note_num_list,start_end_tick_list):
     return event_list
 
 
-
-
-
-
-
-
-
