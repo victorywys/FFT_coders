@@ -44,30 +44,51 @@ def recognize(wav_data, fs = 1.0):
 
     toRtn = []
 
-    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
-    plt.title('STFT Magnitude')
-    plt.ylabel('Frequency [Hz]')
-    plt.xlabel('Time[sec]')
-    plt.show()
+#    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
+#    plt.title('STFT Magnitude')
+#    plt.ylabel('Frequency [Hz]')
+#    plt.xlabel('Time[sec]')
+#    plt.show()
 
     Zxx_fil = np.transpose(Zxx_fil)
     last_note = None
     start_time = 0
     for i, time in enumerate(t):
-        max_freq = f_fil[np.argmax(Zxx_fil[i])]
+        '''    max_freq = f_fil[np.argmax(Zxx_fil[i])]
         note = freqToNote(max_freq)
+        fout.write("%s, %.4f, %.4f\n" % (note, max(Zxx_fil[i]), np.sum(Zxx_fil[i])))
         if note != last_note:
             if last_note != None:
                 toRtn.append((last_note,start_time,time))
 
             last_note = note
             start_time = time
-    toRtn.append((last_note, start_time, t[1]*len(t)))
+        '''
+        note_amp = [0 for _ in range(88)]
+        for j in range(len(Zxx_fil[i])):
+            note_amp[note_name.index(freqToNote(f_fil[j]))] += Zxx_fil[i][j]
+        note_freq_sort = np.argsort(np.array(note_amp))
+        max_amp = note_amp[note_freq_sort[87]]
+        note = None
+        if max_amp > 0.1:
+            for j in range(87, -1, -1):
+                if note_amp[note_freq_sort[j]] < max_amp * 0.7:
+                    break
+                if note == None:
+                    note = note_name[note_freq_sort[j]]
+                elif note_name.index(note) > note_freq_sort[j]:
+                    note = note_name[note_freq_sort[j]]
+        if note != last_note:
+            if last_note != None:
+                toRtn.append((last_note, start_time, time))
+            last_note = note
+            start_time = time
+    if last_note != None:
+        toRtn.append((last_note, start_time, t[1]*len(t)))
     print toRtn
+    print len(toRtn)
 
     return toRtn
-
-#
 
 if __name__ == "__main__":
 #    print(len(note_name))
