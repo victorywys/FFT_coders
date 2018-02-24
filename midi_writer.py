@@ -88,8 +88,8 @@ def time2tick(time_list):
     RESOLUTION = 220
     tick_list = []
     for time_tuple in time_list:
-        start_tick = int(round(time_tuple[1]*RESOLUTION*4*2))
-        end_tick = int(round(time_tuple[2]*RESOLUTION*4*2))
+        start_tick = int(round(time_tuple[1]*RESOLUTION*2))
+        end_tick = int(round(time_tuple[2]*RESOLUTION*2))
         temp = (start_tick,end_tick)
         tick_list.append(temp)
 
