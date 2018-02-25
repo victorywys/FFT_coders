@@ -30,7 +30,7 @@ def recognize(wav_data, fs = 1.0):
     '''
 #    print(len(wav_data))
 
-    f, t, Zxx = signal.stft(wav_data, fs, nperseg = 10000) #it should be adjusted by the resolution of the time zone
+    f, t, Zxx = signal.stft(wav_data, fs, nperseg = 5000) #it should be adjusted by the resolution of the time zone
     Zxx = np.abs(Zxx)
 
     #print note_freq
@@ -53,6 +53,8 @@ def recognize(wav_data, fs = 1.0):
     Zxx_fil = np.transpose(Zxx_fil)
     last_note = None
     start_time = 0
+    f = open("note.log", 'w')
+
     for i, time in enumerate(t):
         '''    max_freq = f_fil[np.argmax(Zxx_fil[i])]
         note = freqToNote(max_freq)
@@ -72,17 +74,20 @@ def recognize(wav_data, fs = 1.0):
         note = None
         if max_amp > 0.1:
             for j in range(87, -1, -1):
-                if note_amp[note_freq_sort[j]] < max_amp * 0.7:
+                f.write("%s %.4f\t\t" % (note_name[note_freq_sort[j]], note_amp[note_freq_sort[j]]))
+                if note_amp[note_freq_sort[j]] < max_amp * 0.3:
                     break
                 if note == None:
                     note = note_name[note_freq_sort[j]]
                 elif note_name.index(note) > note_freq_sort[j]:
                     note = note_name[note_freq_sort[j]]
+        f.write("\n")
         if note != last_note:
             if last_note != None:
                 toRtn.append((last_note, start_time, time))
             last_note = note
             start_time = time
+    f.close()
     if last_note != None:
         toRtn.append((last_note, start_time, t[1]*len(t)))
     print toRtn
