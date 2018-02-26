@@ -8,7 +8,7 @@ def writeMid(note_time_list):
             note_time_list: the info from the note tranfer
         Returns:
     '''
-    print("write midi")
+    #print("write midi")
     # create a new midi.pattern, and add a track to it
     pattern = midi.Pattern()
     track = midi.Track()
@@ -37,7 +37,7 @@ def writeMid(note_time_list):
     track.append(eot)
 
     # Print out the pattern
-    print pattern
+    #print pattern
     # Save the pattern to "out.mid" file
     midi.write_midifile("out.mid", pattern)
 

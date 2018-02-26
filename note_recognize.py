@@ -74,11 +74,11 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
 
     toRtn = []
 
-    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
+    '''plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
     plt.title('STFT Magnitude')
     plt.ylabel('Frequency [Hz]')
     plt.xlabel('Time[sec]')
-    plt.show()
+    plt.show()'''
 
     Zxx_fil = np.transpose(Zxx_fil)
     last_note = None
@@ -100,8 +100,8 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
             #    note_amp[j][k] /= math.sqrt(note_freq[k])
             note_freq_sort.append(np.argsort(np.array(note_amp[j])))
             max_amp.append(note_amp[j][note_freq_sort[j][87]])
-        print max_amp
-        print sum(max_amp)
+        #print max_amp
+        #print sum(max_amp)
         #assume it's a crotchet:
         #two ways to decide the note, calculate the sum of the amp, or major voting. here try to apply the second algorithm
         major_note = [0 for _ in range(88)]
@@ -109,7 +109,7 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
             for k in range(88):
                 major_note[note_freq_sort[j][k]] += k
         major_notes = np.argsort(np.array(major_note)).tolist()
-        print major_notes
+        #print major_notes
         for j in range(87, -1, -1):
             if last_note == None or abs(major_notes[j] - note_name.index(last_note)) <= 7:
                 if last_note != None and major_notes[j] - note_name.index(last_note) == 1:
@@ -164,8 +164,8 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     f.close()
 #    if last_note != None:
 #        toRtn.append((last_note, start_time, t[1]*len(t)))
-    print toRtn
-    print len(toRtn)
+    #print toRtn
+    #print len(toRtn)
 
     return toRtn
 
