@@ -30,7 +30,7 @@ def qualify(wav_data, fr):
     plt.grid('on')
     plt.show()
 
-def recognize(wav_data, fs = 1.0, tempo = 195):
+def recognize(wav_data, fs = 1.0, tempo = 120):
     '''
     Usage: recognize notes of a banch of wave data in time zone
     Args:
@@ -108,7 +108,7 @@ def recognize(wav_data, fs = 1.0, tempo = 195):
                 else:
                     note = note_name[major_notes[j]]
                 break
-        if sum(max_amp) > 0.4:
+        if sum(max_amp) > 0.1:
             if first_time == -1:
                 first_time = i * 4 * t[1]   #shift the output notes to shrink or amplify the possible blank
             last_note = note
