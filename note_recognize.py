@@ -2,6 +2,7 @@ from wave_reader import readWav
 from scipy import signal
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 note_name=["A_0", "As_0", "B_0",
         "C_1", "Cs_1", "D_1", "Ds_1", "E_1", "F_1", "Fs_1", "G_1", "Gs_1", "A_1", "As_1", "B_1",
@@ -42,8 +43,22 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     '''
 #    print(len(wav_data))
 
+    START_BLANK = 0.5
+    WAVE_START_BIAS = 0.1
+    NOTE_AMP_BIAS = 0.15
 
     r_t = 60.0 / tempo #resolution of STFT, 1/4 of a crotchet.
+
+    start = 0
+    for i, frame in enumerate(wav_data): #adjust the blank at the begining
+        if abs(frame) > WAVE_START_BIAS:
+            start = i
+            break
+    if start / fs > 60.0 / tempo:
+        wav_data = wav_data[start - int(60.0/tempo * fs):]
+    else:
+        wav_data = [0 for _ in range(int(60.0/tempo * fs) - start)] + wav_data.tolist()
+
 
     f, t, Zxx = signal.stft(wav_data, fs, nperseg = int(r_t / 2 * fs)) #it should be adjusted by the resolution of the time zone
     Zxx = np.abs(Zxx)
@@ -69,7 +84,6 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     last_note = None
     start_time = 0
     first_time = -1
-    START_BLANK = 0.5
     f = open("note.log", 'w')
 
     for i in range(len(t) / 4):
@@ -82,9 +96,12 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
         for j in range(4):
             for k in range(len(Zxx_part[j])):
                 note_amp[j][note_name.index(freqToNote(f_fil[k]))] += Zxx_part[j][k]
+            #for k in range(88):
+            #    note_amp[j][k] /= math.sqrt(note_freq[k])
             note_freq_sort.append(np.argsort(np.array(note_amp[j])))
             max_amp.append(note_amp[j][note_freq_sort[j][87]])
-
+        print max_amp
+        print sum(max_amp)
         #assume it's a crotchet:
         #two ways to decide the note, calculate the sum of the amp, or major voting. here try to apply the second algorithm
         major_note = [0 for _ in range(88)]
@@ -108,13 +125,11 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
                 else:
                     note = note_name[major_notes[j]]
                 break
-        if sum(max_amp) > 0.1:
+        if sum(max_amp) > NOTE_AMP_BIAS:
             if first_time == -1:
                 first_time = i * 4 * t[1]   #shift the output notes to shrink or amplify the possible blank
             last_note = note
             toRtn.append((note, i * 4 * t[1] - first_time + START_BLANK, (i + 1) * 4 * t[1] - first_time + START_BLANK))
-        else:
-            last_note = None
     """for i, time in enumerate(t):
         '''    max_freq = f_fil[np.argmax(Zxx_fil[i])]
         note = freqToNote(max_freq)
@@ -155,9 +170,10 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     return toRtn
 
 if __name__ == "__main__":
-#    print(len(note_name))
+
+#    f = open("note_freq.txt", 'w')
 #    for i in range(len(note_name)):
-#        print("%s: %.4f" % (note_name[i], note_freq[i]))
+#        f.write("%s: %.4f\n" % (note_name[i], note_freq[i]))
     _, _, fr, data = readWav("rec")
 #    qualify(data, fr)
 #    print("hello")
