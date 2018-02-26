@@ -19,18 +19,33 @@ def freqToNote(freq):
     log_note = np.log(list(map(lambda x: x[0]/x[1], zip(note_freq, [freq] * note_num))))
     return note_name[np.argmin(abs(log_note))]
 
+def qualify(wav_data, fr):
+    nframe = len(wav_data)
+    print wav_data
+    time = np.arange(0, nframe) * (1.0 / fr)
+    plt.plot(time, wav_data)
+    plt.xlabel("Time(s)")
+    plt.ylabel("Amplitude")
+    plt.title("Single channel wavedata")
+    plt.grid('on')
+    plt.show()
 
-def recognize(wav_data, fs = 1.0):
+def recognize(wav_data, fs = 1.0, tempo = 195):
     '''
     Usage: recognize notes of a banch of wave data in time zone
     Args:
         wav_data: a 1-d array that containing the time data
+        fs: the sample frequency
+        tempo: the tempo of the song, measured by crotchets per minute
     Returns:
         A list of note information. Each piece of information is a triple: (note_name, start_time(s), end_time(s))
     '''
 #    print(len(wav_data))
 
-    f, t, Zxx = signal.stft(wav_data, fs, nperseg = 5000) #it should be adjusted by the resolution of the time zone
+
+    r_t = 60.0 / tempo #resolution of STFT, 1/4 of a crotchet.
+
+    f, t, Zxx = signal.stft(wav_data, fs, nperseg = int(r_t / 2 * fs)) #it should be adjusted by the resolution of the time zone
     Zxx = np.abs(Zxx)
 
     #print note_freq
@@ -38,24 +53,69 @@ def recognize(wav_data, fs = 1.0):
     Zxx_fil = []
 
     for i, freq in enumerate(f):
-        if freq < 4500:
+        if freq > 50 and freq < 1500:
             f_fil.append(freq)
             Zxx_fil.append(Zxx[i][:])
 
     toRtn = []
 
-#    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
-#    plt.title('STFT Magnitude')
-#    plt.ylabel('Frequency [Hz]')
-#    plt.xlabel('Time[sec]')
-#    plt.show()
+    plt.pcolormesh(t, f_fil, np.abs(Zxx_fil), vmin=0, vmax=0.3)
+    plt.title('STFT Magnitude')
+    plt.ylabel('Frequency [Hz]')
+    plt.xlabel('Time[sec]')
+    plt.show()
 
     Zxx_fil = np.transpose(Zxx_fil)
     last_note = None
     start_time = 0
+    first_time = -1
+    START_BLANK = 0.5
     f = open("note.log", 'w')
 
-    for i, time in enumerate(t):
+    for i in range(len(t) / 4):
+        #consider consecutive four time blocks
+        time_part = t[i*4:min((i+1)*4, len(t))]
+        Zxx_part = Zxx_fil[i*4:min((i+1)*4, len(t))]
+        note_amp = [[0 for _ in range(88)] for __ in range(4)]
+        note_freq_sort = []
+        max_amp = []
+        for j in range(4):
+            for k in range(len(Zxx_part[j])):
+                note_amp[j][note_name.index(freqToNote(f_fil[k]))] += Zxx_part[j][k]
+            note_freq_sort.append(np.argsort(np.array(note_amp[j])))
+            max_amp.append(note_amp[j][note_freq_sort[j][87]])
+
+        #assume it's a crotchet:
+        #two ways to decide the note, calculate the sum of the amp, or major voting. here try to apply the second algorithm
+        major_note = [0 for _ in range(88)]
+        for j in range(4):
+            for k in range(88):
+                major_note[note_freq_sort[j][k]] += k
+        major_notes = np.argsort(np.array(major_note)).tolist()
+        print major_notes
+        for j in range(87, -1, -1):
+            if last_note == None or abs(major_notes[j] - note_name.index(last_note)) <= 7:
+                if last_note != None and major_notes[j] - note_name.index(last_note) == 1:
+                    if major_notes.index(major_notes[j] + 1) > major_notes.index(major_notes[j] - 1):     #half-step notes are not allowed to avoid fluctuate
+                        note = note_name[major_notes[j] + 1]
+                    else:
+                        note = last_note
+                elif last_note != None and major_notes[j] - note_name.index(last_note) == -1:
+                    if major_notes.index(major_notes[j] - 1) > major_notes.index(major_notes[j] + 1):
+                        note = note_name[major_notes[j] - 1]
+                    else:
+                        note = last_note
+                else:
+                    note = note_name[major_notes[j]]
+                break
+        if sum(max_amp) > 0.4:
+            if first_time == -1:
+                first_time = i * 4 * t[1]   #shift the output notes to shrink or amplify the possible blank
+            last_note = note
+            toRtn.append((note, i * 4 * t[1] - first_time + START_BLANK, (i + 1) * 4 * t[1] - first_time + START_BLANK))
+        else:
+            last_note = None
+    """for i, time in enumerate(t):
         '''    max_freq = f_fil[np.argmax(Zxx_fil[i])]
         note = freqToNote(max_freq)
         fout.write("%s, %.4f, %.4f\n" % (note, max(Zxx_fil[i]), np.sum(Zxx_fil[i])))
@@ -77,19 +137,18 @@ def recognize(wav_data, fs = 1.0):
                 f.write("%s %.4f\t\t" % (note_name[note_freq_sort[j]], note_amp[note_freq_sort[j]]))
                 if note_amp[note_freq_sort[j]] < max_amp * 0.3:
                     break
-                if note == None:
-                    note = note_name[note_freq_sort[j]]
-                elif note_name.index(note) > note_freq_sort[j]:
-                    note = note_name[note_freq_sort[j]]
-        f.write("\n")
+                if note == None or note_name.index(note) > note_freq_sort[j]:
+                    if last_note == None or abs(note_name.index(last_note) - note_freq_sort[j]) <= 7:
+                        note = note_name[note_freq_sort[j]]
+        f.write("%.4f\n"%np.sum(note_amp))
         if note != last_note:
             if last_note != None:
                 toRtn.append((last_note, start_time, time))
             last_note = note
-            start_time = time
+            start_time = time"""
     f.close()
-    if last_note != None:
-        toRtn.append((last_note, start_time, t[1]*len(t)))
+#    if last_note != None:
+#        toRtn.append((last_note, start_time, t[1]*len(t)))
     print toRtn
     print len(toRtn)
 
@@ -99,8 +158,10 @@ if __name__ == "__main__":
 #    print(len(note_name))
 #    for i in range(len(note_name)):
 #        print("%s: %.4f" % (note_name[i], note_freq[i]))
-    _, _, fr, data = readWav("fft_coder")
+    _, _, fr, data = readWav("rec")
+#    qualify(data, fr)
 #    print("hello")
-    recognize(data, fr)
+    recognize(data, fr, 195)
 #    print(freqToNote(500))
+
 
