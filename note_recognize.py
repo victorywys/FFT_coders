@@ -45,9 +45,12 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
 
     START_BLANK = 0.5
     WAVE_START_BIAS = 0.1
-    NOTE_AMP_BIAS = 0.15
+    NOTE_AMP_BIAS = 0.08
+    SINGLE_NOTE_RATIO = 0.8
 
     r_t = 60.0 / tempo #resolution of STFT, 1/4 of a crotchet.
+
+    print r_t
 
     start = 0
     for i, frame in enumerate(wav_data): #adjust the blank at the begining
@@ -68,7 +71,7 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     Zxx_fil = []
 
     for i, freq in enumerate(f):
-        if freq > 50 and freq < 1500:
+        if freq > 50 and freq < 445:
             f_fil.append(freq)
             Zxx_fil.append(Zxx[i][:])
 
@@ -86,6 +89,9 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     first_time = -1
     f = open("note.log", 'w')
 
+    last_crotchet = [None, None]
+    last_crotchet_amp = []
+
     for i in range(len(t) / 4):
         #consider consecutive four time blocks
         time_part = t[i*4:min((i+1)*4, len(t))]
@@ -102,14 +108,68 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
             max_amp.append(note_amp[j][note_freq_sort[j][87]])
         print max_amp
         print sum(max_amp)
+
+
+
+        #assume it contains two quavers
+        major_note = [[0 for _ in range(88)] for __ in range(2)]
+        for j in range(4):
+            for k in range(88):
+                major_note[j / 2][note_freq_sort[j][k]] += k
+        major_notes = []
+        for j in range(2):
+            major_notes.append(np.argsort(np.array(major_note[j])).tolist())
+        first_quaver = None
+        second_quaver = None
+
+        #recognize the first quaver:
+        for j in range(87, -1, -1):
+             if last_note == None or abs(major_notes[0][j] - note_name.index(last_note)) <= 7:
+                if last_note != None and major_notes[0][j] - note_name.index(last_note) == 1:
+                    if major_notes[0].index(major_notes[0][j] + 1) > major_notes[0].index(major_notes[0][j] - 1):     #half-step notes are not allowed to avoid fluctuate
+                        first_quaver = note_name[major_notes[0][j] + 1]
+                    else:
+                        first_quaver = last_note
+                elif last_note != None and major_notes[0][j] - note_name.index(last_note) == -1:
+                    if major_notes[0].index(major_notes[0][j] - 1) > major_notes[0].index(major_notes[0][j] + 1):
+                        first_quaver = note_name[major_notes[0][j] - 1]
+                    else:
+                        first_quaver = last_note
+                else:
+                    first_quaver = note_name[major_notes[0][j]]
+                break
+        if (max_amp[0] + max_amp[1]) / 2 > NOTE_AMP_BIAS:
+            last_note = first_quaver
+
+        #recognize the second quaver:
+        for j in range(87, -1, -1):
+             if last_note == None or abs(major_notes[1][j] - note_name.index(last_note)) <= 7:
+                if last_note != None and major_notes[1][j] - note_name.index(last_note) == 1:
+                    if major_notes[1].index(major_notes[1][j] + 1) > major_notes[1].index(major_notes[1][j] - 1):     #half-step notes are not allowed to avoid fluctuate
+                        second_quaver = note_name[major_notes[1][j] + 1]
+                    else:
+                        second_quaver = last_note
+                elif last_note != None and major_notes[1][j] - note_name.index(last_note) == -1:
+                    if major_notes[1].index(major_notes[1][j] - 1) > major_notes[1].index(major_notes[1][j] + 1):
+                        second_quaver = note_name[major_notes[1][j] - 1]
+                    else:
+                        second_quaver = last_note
+                else:
+                    second_quaver = note_name[major_notes[1][j]]
+                break
+
+        if (max_amp[2] + max_amp[3]) / 2 > NOTE_AMP_BIAS:
+            last_note = second_quaver
+
         #assume it's a crotchet:
         #two ways to decide the note, calculate the sum of the amp, or major voting. here try to apply the second algorithm
+
         major_note = [0 for _ in range(88)]
         for j in range(4):
             for k in range(88):
                 major_note[note_freq_sort[j][k]] += k
         major_notes = np.argsort(np.array(major_note)).tolist()
-        print major_notes
+
         for j in range(87, -1, -1):
             if last_note == None or abs(major_notes[j] - note_name.index(last_note)) <= 7:
                 if last_note != None and major_notes[j] - note_name.index(last_note) == 1:
@@ -125,11 +185,54 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
                 else:
                     note = note_name[major_notes[j]]
                 break
-        if sum(max_amp) > NOTE_AMP_BIAS:
-            if first_time == -1:
-                first_time = i * 4 * t[1]   #shift the output notes to shrink or amplify the possible blank
-            last_note = note
-            toRtn.append((note, i * 4 * t[1] - first_time + START_BLANK, (i + 1) * 4 * t[1] - first_time + START_BLANK))
+
+        #decide if the two quavers are a single crotchet:
+        #on the one hand, see if view the two quavers as a single crotchet is reasonable
+        if note != None and first_quaver != None:
+            if note_amp[0][note_name.index(note)] + note_amp[1][note_name.index(note)] > (note_amp[0][note_name.index(first_quaver)] + note_amp[1][note_name.index(first_quaver)]) * SINGLE_NOTE_RATIO:
+                first_quaver = note
+            else:
+                print note_amp[0][note_name.index(note)] + note_amp[1][note_name.index(note)]
+                print (note_amp[0][note_name.index(first_quaver)] + note_amp[1][note_name.index(first_quaver)])
+        if note != None and second_quaver != None:
+            if note_amp[2][note_name.index(note)] + note_amp[3][note_name.index(note)] > (note_amp[2][note_name.index(second_quaver)] + note_amp[3][note_name.index(second_quaver)]) * SINGLE_NOTE_RATIO:
+                second_quaver = note
+
+
+        #tend to recognize as a single crotchet, SINGLE_NOTE_RATIO defines the tendency
+        if second_quaver == first_quaver and first_quaver != None and \
+           note_amp[1][note_name.index(first_quaver)] > note_amp[2][note_name.index(second_quaver)] * SINGLE_NOTE_RATIO:
+            #single crotchet
+            if sum(max_amp) / 4 > NOTE_AMP_BIAS:
+                if first_time == -1:
+                   first_time = i * 4 * t[1]   #shift the output notes to shrink or amplify the possible blank
+               #decide if the crotchet is a continious note of last crotchet
+                if (first_quaver == last_crotchet[1]) and \
+                   (note_amp[0][note_name.index(first_quaver)] + note_amp[1][note_name.index(first_quaver)]) > \
+                   (last_crotchet_amp[2][note_name.index(last_crotchet[1])] + last_crotchet_amp[3][note_name.index(last_crotchet[1])]) * SINGLE_NOTE_RATIO:
+                    toRtn = toRtn[:-1] + [(first_quaver, toRtn[-1][1], (i + 1) * 4 * t[1] - first_time + START_BLANK)]
+                else:
+                    toRtn.append((first_quaver, i * 4 * t[1] - first_time + START_BLANK, (i + 1) * 4 * t[1] - first_time + START_BLANK))
+        else:
+            #two quavers
+            if first_quaver != None and (max_amp[0] + max_amp[1]) / 2 > NOTE_AMP_BIAS:
+                #decide if the first quaver is a continious note of last crotchet
+                if (first_time == -1):
+                    first_time = i * 4 * t[1]
+                if (first_quaver == last_crotchet[1]) and \
+                   note_amp[0][note_name.index(first_quaver)] > last_crotchet_amp[3][note_name.index(last_crotchet[1])] * SINGLE_NOTE_RATIO:
+                    toRtn = toRtn[:-1] + [(first_quaver, toRtn[-1][1], (i * 4 + 2) * t[1] - first_time + START_BLANK)]
+                else:
+                    toRtn.append((first_quaver, i * 4 * t[1] - first_time + START_BLANK, (i * 4 + 2) * t[1] - first_time + START_BLANK))
+            if second_quaver != None and (max_amp[2] + max_amp[3]) / 2 > NOTE_AMP_BIAS:
+                if (first_time == -1):
+                    first_time = (i * 4 + 2) * t[1]
+                toRtn.append((second_quaver, (i * 4 + 2) * t[1] - first_time + START_BLANK, (i + 1) * 4 * t[1] - first_time + START_BLANK))
+
+
+
+
+
     """for i, time in enumerate(t):
         '''    max_freq = f_fil[np.argmax(Zxx_fil[i])]
         note = freqToNote(max_freq)
