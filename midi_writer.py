@@ -1,4 +1,5 @@
 import midi
+import uuid
 
 
 def writeMid(note_time_list):
@@ -7,8 +8,8 @@ def writeMid(note_time_list):
         Args:
             note_time_list: the info from the note tranfer
         Returns:
+            the pathName of the out midi file
     '''
-    #print("write midi")
     # create a new midi.pattern, and add a track to it
     pattern = midi.Pattern()
     track = midi.Track()
@@ -36,10 +37,13 @@ def writeMid(note_time_list):
     eot = midi.EndOfTrackEvent(tick=1)
     track.append(eot)
 
-    # Print out the pattern
-    #print pattern
-    # Save the pattern to "out.mid" file
-    midi.write_midifile("out.mid", pattern)
+    # Save the pattern to mid file
+    with open('wav2mid.config', 'r') as configFile:
+        outputPath = configFile.read()
+        outMidPath = outputPath + str(uuid.uuid1())+'.mid'
+
+    midi.write_midifile(outMidPath, pattern)
+    return outMidPath
 
 
 def note_name2note_num(note_name_list):
