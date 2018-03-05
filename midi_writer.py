@@ -2,11 +2,12 @@ import midi
 import uuid
 
 
-def writeMid(note_time_list):
+def writeMid(note_time_list,bpm):
     '''
         Usage: write the infomation got from wav transfer to a .mid file
         Args:
             note_time_list: the info from the note tranfer
+            bpm: the bpm of the wav
         Returns:
             the pathName of the out midi file
     '''
@@ -14,12 +15,16 @@ def writeMid(note_time_list):
     pattern = midi.Pattern()
     track = midi.Track()
     pattern.append(track)
+    
+    # change the bpm of midi file
+    tempo = midi.SetTempoEvent(bpm=bpm)
+    track.append(tempo)
 
     # transfer the note name in note_time_list to int value in midi format
     note_num_list = note_name2note_num(note_time_list)
 
     # transfer the note start_time and end_time to tick number in midi format
-    start_end_tick_list = time2tick(note_time_list)
+    start_end_tick_list = time2tick(note_time_list,bpm)
 
     #change the absolute tick to delta tick
     event_list = order_ticks(note_num_list,start_end_tick_list)
@@ -80,20 +85,20 @@ def note_name2note_num(note_name_list):
     return note_num_list
 
 
-def time2tick(time_list):
+def time2tick(time_list,bpm):
     '''
         Usage: transfer the note start_time and end_time to tick number(absolute) in midi format
         Args:
             time_list: the original info got from wav_reader
+            bpm: the bpm of wav
         Returns:
             tick_list: the list of start_end_tick_num tuples
     '''
-    BPM = 120
     RESOLUTION = 220
     tick_list = []
     for time_tuple in time_list:
-        start_tick = int(round(time_tuple[1]*RESOLUTION*2))
-        end_tick = int(round(time_tuple[2]*RESOLUTION*2))
+        start_tick = int(round(time_tuple[1]*RESOLUTION*bpm/60))
+        end_tick = int(round(time_tuple[2]*RESOLUTION*bpm/60))
         temp = (start_tick,end_tick)
         tick_list.append(temp)
 
@@ -109,6 +114,7 @@ def order_ticks(note_num_list,start_end_tick_list):
         Returns:
             event_list: the list of tuple (note_num, relative_tick_num, on/off), 1/0 represent on/off
     '''
+    
     event_list = []
 
     for i in range(len(note_num_list)):

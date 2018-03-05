@@ -25,12 +25,6 @@ def readWav(filename, mode = "first"):
         print("\tfirst: return a 1-d list containing the frame data of the first channel.")
         return
 
-    #add suffix if suffix is not explicitly given
-    if len(filename) < 4:
-        filename = filename + ".wav"
-    elif not filename[-4:].lower() in ".wav":
-        filename = filename + ".wav"
-
     #avoid FileIO exceptions
     try:
         f = wave.open(filename, "rb")

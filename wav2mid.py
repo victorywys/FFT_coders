@@ -7,7 +7,7 @@ import sys
 def wav2mid(wav_file_name, tempo = 120):
     _, _, fr, data = readWav(wav_file_name)
     note_time_list = recognize(data,fr,tempo)
-    outMidPath = writeMid(note_time_list)
+    outMidPath = writeMid(note_time_list,tempo)
     print outMidPath
 
 
