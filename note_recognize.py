@@ -68,7 +68,7 @@ def recognize(wav_data, fs = 1.0, tempo = 120):
     Zxx_fil = []
 
     for i, freq in enumerate(f):
-        if freq > 50 and freq < 1500:
+        if freq > 50 and freq < 1000:
             f_fil.append(freq)
             Zxx_fil.append(Zxx[i][:])
 
