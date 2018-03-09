@@ -31,7 +31,7 @@ def qualify(wav_data, fr):
     plt.grid('on')
     plt.show()
 
-def recognize(wav_data, fs = 1.0, tempo = 120):
+def recognize(wav_data, fs = 44100.0, tempo = 120):
     '''
     Usage: recognize notes of a banch of wave data in time zone
     Args:
